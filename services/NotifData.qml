@@ -43,6 +43,7 @@ QtObject {
     property string notificationId
     property string summary
     property string body
+    property string link
     property string appIcon
     property string appName
     property string image
@@ -52,6 +53,7 @@ QtObject {
     property bool resident
     property bool hasActionIcons
     property list<var> actions
+    readonly property list<var> visibleActions: actions.filter(a => a.identifier !== "default")
 
     readonly property bool hasFullscreen: {
         const monitor = Hypr.focusedMonitor;
@@ -133,7 +135,7 @@ QtObject {
         }
 
         function onBodyChanged(): void {
-            notif.body = notif.notification.body;
+            notif.parseContent(notif.notification.body);
         }
 
         function onAppIconChanged(): void {
@@ -226,13 +228,58 @@ QtObject {
         }
     }
 
-    Component.onCompleted: {
-        if (!notification)
+    function parseContent(rawBody: string): void {
+        if (!rawBody) {
+            notif.body = "";
+            notif.link = "";
             return;
+        }
+
+        const htmlMatch = rawBody.match(/^\s*<a\s+[^>]*href=["']([^"']+)["'][^>]*>[\s\S]*?<\/a>(?:\r?\n)*/i);
+        if (htmlMatch) {
+            notif.link = htmlMatch[1];
+            notif.body = rawBody.slice(htmlMatch[0].length).trim();
+            return;
+        }
+
+        const mdMatch = rawBody.match(/^\s*\[[^\]]*\]\((https?:\/\/[^\s)]+)\)(?:\r?\n)*/i);
+        if (mdMatch) {
+            notif.link = mdMatch[1];
+            notif.body = rawBody.slice(mdMatch[0].length).trim();
+            return;
+        }
+
+        const urlMatch = rawBody.match(/^\s*(https?:\/\/[^\s<]+)(?:\r?\n)+/i);
+        if (urlMatch) {
+            notif.link = urlMatch[1];
+            notif.body = rawBody.slice(urlMatch[0].length).trim();
+            return;
+        }
+
+        notif.body = rawBody;
+    }
+
+    function activate(): void {
+        if (notif.link)
+            Qt.openUrlExternally(notif.link);
+
+        const defaultAction = notif.actions.find(a => a.identifier === "default");
+        if (defaultAction)
+            defaultAction.invoke();
+        else if (!notif.link && notif.actions.length === 1)
+            notif.actions[0].invoke();
+    }
+
+    Component.onCompleted: {
+        if (!notification) {
+            if (!link && body)
+                parseContent(body);
+            return;
+        }
 
         notificationId = notification.id;
         summary = notification.summary;
-        body = notification.body;
+        parseContent(notification.body);
         appIcon = notification.appIcon;
         appName = notification.appName;
         image = notification.image;

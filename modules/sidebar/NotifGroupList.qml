@@ -73,7 +73,7 @@ LazyListView {
             scale: LazyListView.removing || LazyListView.adding ? 0.7 : 1
 
             hoverEnabled: true
-            cursorShape: notifInner.body?.hoveredLink ? Qt.PointingHandCursor : pressed ? Qt.ClosedHandCursor : undefined
+            cursorShape: notifInner.body?.hoveredLink || modelData?.link ? Qt.PointingHandCursor : pressed ? Qt.ClosedHandCursor : undefined
             acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
             preventStealing: !root.expanded
             enabled: !(modelData?.closed ?? true)
@@ -100,6 +100,12 @@ LazyListView {
                     x = 0;
                 else
                     modelData?.close();
+            }
+            onClicked: event => {
+                if (event.button === Qt.LeftButton && Math.abs(x) <= 10 && modelData?.link) {
+                    modelData.activate();
+                    root.screenState.sidebar = false;
+                }
             }
 
             ParallelAnimation {
