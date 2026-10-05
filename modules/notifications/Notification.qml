@@ -45,7 +45,7 @@ StyledRect {
 
         anchors.fill: parent
         hoverEnabled: true
-        cursorShape: root.expanded && body.hoveredLink ? Qt.PointingHandCursor : pressed ? Qt.ClosedHandCursor : undefined
+        cursorShape: (root.expanded && body.hoveredLink) || root.modelData.link ? Qt.PointingHandCursor : pressed ? Qt.ClosedHandCursor : undefined
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
         preventStealing: true
 
@@ -81,12 +81,19 @@ StyledRect {
             }
         }
         onClicked: event => {
-            if (!GlobalConfig.notifs.actionOnClick || event.button !== Qt.LeftButton)
+            if (event.button !== Qt.LeftButton || Math.abs(root.x) > 10)
                 return;
 
-            const actions = root.modelData.actions;
-            if (actions.length === 1)
-                actions[0].invoke();
+            if (root.modelData.link) {
+                root.modelData.activate();
+                root.modelData.popup = false;
+                return;
+            }
+
+            if (!GlobalConfig.notifs.actionOnClick)
+                return;
+
+            root.modelData.activate();
         }
 
         Item {
@@ -391,8 +398,9 @@ StyledRect {
                 anchors.rightMargin: Tokens.spacing.small
 
                 animate: true
-                textFormat: root.bodyTextFormat
-                text: bodyPreviewMetrics.elidedText
+                elide: Text.ElideRight
+                maximumLineCount: 1
+                text: Strings.stripMarkup(root.modelData.body)
                 color: Colours.palette.m3onSurfaceVariant
                 font: Tokens.font.body.small
 
@@ -403,15 +411,6 @@ StyledRect {
                         type: Anim.DefaultEffects
                     }
                 }
-            }
-
-            TextMetrics {
-                id: bodyPreviewMetrics
-
-                text: root.modelData.body
-                font: bodyPreview.font
-                elide: Text.ElideRight
-                elideWidth: bodyPreview.width
             }
 
             StyledText {
@@ -467,7 +466,7 @@ StyledRect {
                 IconButton {
                     isRound: true
                     shapeMorph: true
-                    fillWidth: root.modelData.actions.length === 0
+                    fillWidth: root.modelData.visibleActions.length === 0
                     inactiveColour: root.modelData.urgency === NotificationUrgency.Critical ? Colours.palette.m3secondary : Colours.layer(Colours.palette.m3surfaceContainerHighest, 2)
                     inactiveOnColour: root.modelData.urgency === NotificationUrgency.Critical ? Colours.palette.m3onSecondary : Colours.palette.m3onSurfaceVariant
                     icon: "close"
@@ -476,7 +475,7 @@ StyledRect {
                 }
 
                 Repeater {
-                    model: root.modelData.actions
+                    model: root.modelData.visibleActions
 
                     TextButton {
                         required property var modelData
@@ -502,7 +501,7 @@ StyledRect {
                 IconButton {
                     isRound: true
                     shapeMorph: true
-                    fillWidth: root.modelData.actions.length === 0
+                    fillWidth: root.modelData.visibleActions.length === 0
                     inactiveColour: root.modelData.urgency === NotificationUrgency.Critical ? Colours.palette.m3secondary : Colours.layer(Colours.palette.m3surfaceContainerHighest, 2)
                     inactiveOnColour: root.modelData.urgency === NotificationUrgency.Critical ? Colours.palette.m3onSecondary : Colours.palette.m3onSurfaceVariant
                     icon: copyTimer.running ? "inventory" : "content_copy"
