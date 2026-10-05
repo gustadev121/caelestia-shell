@@ -105,7 +105,7 @@ Item {
                     {
                         isClose: true
                     },
-                    ...(root.notif?.actions ?? []),
+                    ...(root.notif?.visibleActions ?? []),
                     {
                         isCopy: true
                     }
