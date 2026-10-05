@@ -66,6 +66,7 @@ Singleton {
                     id: n.id,
                     summary: n.summary,
                     body: n.body,
+                    link: n.link,
                     appIcon: n.appIcon,
                     appName: n.appName,
                     image: n.image,
